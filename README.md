@@ -1,5 +1,10 @@
 # ofxGaplessVideo
-Gapless Video Playback for OpenFrameworks. Runs with avFoundation on OSX and gStreamer on Linux. Use it with openFrameworks master, since the playback systems are loading clips faster than in the official release.
+Gapless Video Playback for OpenFrameworks. Runs with avFoundation on OSX and gStreamer on Linux. 
+
+Compatibility
+-------------
+
+ofxGaplessVideo relies on the loadAsync function, which only exists in openFrameworks master. Consider it as experimental.
 
 Usage
 -----
