@@ -125,7 +125,7 @@ void ofxGaplessVideoPlayer::update(){
     if (action == load || action == loadpivot) {
         loadTime = actionTimeout = ofGetElapsedTimeMillis();
         videos[currentMovie==0?1:0].setVolume(0);
-        videos[currentMovie==0?1:0].loadMovie(name);
+        videos[currentMovie==0?1:0].loadAsync(name);
         loadTime = ofGetElapsedTimeMillis() - loadTime;
         fades[currentMovie==0?1:0].in  = in;
         fades[currentMovie==0?1:0].out = out;
