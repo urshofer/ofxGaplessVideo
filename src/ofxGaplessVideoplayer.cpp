@@ -4,13 +4,17 @@
 ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
     hasPreview      = false;
     currentMovie    = 0;
-    actionTimeout        = 0;
+    pendingMovie    = 1;
+	players[0].actionTimeout   = 0;
+	players[1].actionTimeout   = 0;
     forcetrigger    = false;
     state           = empty;
+
 	
+    
 	#ifdef TARGET_LINUX
-	videos[0].getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
-	videos[1].getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
+	players[0].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
+	players[1].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
 	#endif
 }
 
@@ -31,8 +35,10 @@ void ofxGaplessVideoPlayer::togglePreview(){
 
 
 //--------------------------------------------------------------
+// Enqueue Function: triggered from another thread
+//--------------------------------------------------------------
 void ofxGaplessVideoPlayer::loadMovie(string _name, bool _in, bool _out){
-    ofLogVerbose() << "+ ENQUEUE: LoadMovie: " << _name << endl;
+    ofLogError() << "+ ENQUEUE: LoadMovie: " << _name;
     ofxGaplessVideoPlayer::command c;
     c.c = "loadMovie";
     c.n = _name;
@@ -47,7 +53,7 @@ void ofxGaplessVideoPlayer::loadMovie(string _name, bool _in, bool _out){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::appendMovie(string _name, bool _in, bool _out){
-    ofLogVerbose() << "+ ENQUEUE: appendMovie: " << _name << endl;
+    ofLogError() << "+ ENQUEUE: appendMovie: " << _name;
     ofxGaplessVideoPlayer::command c;
     c.c = "appendMovie";
     c.n = _name;
@@ -61,7 +67,7 @@ void ofxGaplessVideoPlayer::appendMovie(string _name, bool _in, bool _out){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::triggerMovie(string _name){
-    ofLogVerbose() << "+ ENQUEUE: triggerMovie: " << _name << endl;
+    ofLogError() << "+ ENQUEUE: triggerMovie: " << _name;
     ofxGaplessVideoPlayer::command c;
     c.c = "triggerMovie";
     c.n = _name;
@@ -74,106 +80,72 @@ void ofxGaplessVideoPlayer::triggerMovie(string _name){
 }
 
 
+//--------------------------------------------------------------
+// Dequeue Function: triggered from the update func(main thread)
+//--------------------------------------------------------------
+void ofxGaplessVideoPlayer::_loadMovie(string _name, bool _in, bool _out){
+    ofLogError() << "+ DEQUEUE: loadMovie: " << _name;
+    appendMovie(_name,_in,_out);
+    triggerMovie(_name);
+}
+
+
+//--------------------------------------------------------------
+void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
+    ofLogError() << "+ DEQUEUE: appendMovie: " << _name;
+    players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis();
+    players[pendingMovie].loadTime = players[pendingMovie].actionTimeout;
+    players[pendingMovie].video.setVolume(0);
+    players[pendingMovie].video.close();
+    players[pendingMovie].video.loadAsync(_name);
+    players[pendingMovie].video.setPaused(true);
+    players[pendingMovie].fades.in  = _in;
+    players[pendingMovie].fades.out = _out;
+}
+
+//--------------------------------------------------------------
+void ofxGaplessVideoPlayer::_triggerMovie(string _name){
+    ofLogError() << "+ DEQUEUE: triggerMovie: " << _name;
+
+    if(players[pendingMovie].video.isPaused()) {
+        players[pendingMovie].video.setPaused(false);
+        players[currentMovie].video.setPaused(true);
+    }
+    else {
+        _appendMovie(_name, false, false);
+        players[pendingMovie].video.setPaused(false);
+    }
+    pendingMovie = currentMovie;
+    currentMovie = pendingMovie==1?0:1;
+
+}
+
+
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::update(){
     
-    /* Process Command: Dequeue from Command Stack */
-
-    if (queue.size()>0 && (state == ready || state == empty)) {
-        ofxGaplessVideoPlayer::command next_command = queue.front();
-        queue.pop_front();
+    if (queue.size()>0) {
+        ofxGaplessVideoPlayer::command next_command;
+        if (lock()) {
+            next_command = queue.front();
+            queue.pop_front();
+            unlock();
+        }
         if (next_command.c == "loadMovie") {
-            ofLogVerbose() << "+ DEQUEUE: LoadMovie: " << next_command.n << endl;
-            action      = loadpivot;
-            name        = next_command.n;
-            in          = next_command.i;
-            out         = next_command.o;
+            _loadMovie(next_command.n,next_command.i,next_command.o);
         }
         if (next_command.c == "appendMovie") {
-            ofLogVerbose() << "+ DEQUEUE: AppendMovie: " << next_command.n << endl;
-            action      = load;
-            name        = next_command.n;
-            in          = next_command.i;
-            out         = next_command.o;
+            _appendMovie(next_command.n,next_command.i,next_command.o);
         }
         if (next_command.c == "triggerMovie") {
-            ofLogVerbose() << "+ DEQUEUE: TriggerMovie: " << next_command.n << endl;
-            if (state != ready) {
-                loadMovie(next_command.n, false, false);
-            }
-            else {
-                action = pivot;
-            }
-        }
-   }
-
-    
-    /* Loading */
-
-    if (state == loading) {
-        if (videos[currentMovie==0?1:0].isLoaded()) {
-            actionTimeout = ofGetElapsedTimeMillis();
-            videos[currentMovie==0?1:0].play();
-            state = loaded;
-        }
-        else if (ofGetElapsedTimeMillis() - actionTimeout > 1000) {
-            state = empty;
-            ofLogError() << "LOAD ERROR: " << name << endl;
+            _triggerMovie(next_command.n);
         }
     }
-    if (action == load || action == loadpivot) {
-        loadTime = actionTimeout = ofGetElapsedTimeMillis();
-        videos[currentMovie==0?1:0].setVolume(0);
-        videos[currentMovie==0?1:0].loadMovie(name);
-        loadTime = ofGetElapsedTimeMillis() - loadTime;
-        fades[currentMovie==0?1:0].in  = in;
-        fades[currentMovie==0?1:0].out = out;
-        state = loading;
-        forcetrigger = action==loadpivot?true:false;
-    }
-    
-    /* Get Ready */
-    
-    if (state == loaded) {
-        if (videos[currentMovie==0?1:0].isPlaying()) {
-            videos[currentMovie==0?1:0].setPaused(true);
-            state = ready;
-        }
-        else  if (ofGetElapsedTimeMillis() - actionTimeout > 1000) {
-            state = empty;
-            ofLogError() << "READY ERROR: " << name << endl;
-        }
-    }
-    
-    /* Pivot aka. Trigger */
-    
-    if ((action == pivot || forcetrigger) && state == ready) {
-        actionTimeout = ofGetElapsedTimeMillis();
-        videos[currentMovie==0?1:0].setPaused(false);
-        state = playing;
-        forcetrigger = false;
-        actionTimeout = ofGetElapsedTimeMillis();
-    }
-    
-    if (state == playing) {
-        if (videos[currentMovie==0?1:0].isPlaying() && videos[currentMovie==0?1:0].getCurrentFrame() > 1) {
-            videos[currentMovie].stop();
-            currentMovie = currentMovie==0?1:0;
-            state = empty;
-            actionTimeout = ofGetElapsedTimeMillis() - actionTimeout;
-        }
-        else if (ofGetElapsedTimeMillis() - actionTimeout > 1000) {
-            state = empty;
-            ofLogError() << "TRIGGER ERROR: " << name << endl;
-        }
-    }
-    
-    
-    videos[0].update();
-    videos[1].update();
-    action = null;
-
+//    if (players[0].video.isLoaded())
+        players[0].video.update();
+//    if (players[1].video.isLoaded())
+        players[1].video.update();
 }
 
 
@@ -182,33 +154,33 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
     static bool ready = false;
 	static bool force_hide = false;
 
-    if (videos[currentMovie].isPlaying() && !force_hide) {
+    if (players[currentMovie].video.isPlaying() && !force_hide) {
         float fade = 1.0f;
 		static float old_fade = 0.0f;
-        if (fades[currentMovie].in && videos[currentMovie].getCurrentFrame()<25) {
-            fade = 1.0f / 25.0f * CLAMP(videos[currentMovie].getCurrentFrame()-1, 0, 25);
-            ofLogVerbose() << "Fade in " << fade << endl;
+        if (players[currentMovie].fades.in && players[currentMovie].video.getCurrentFrame()<25) {
+            fade = 1.0f / 25.0f * CLAMP(players[currentMovie].video.getCurrentFrame()-1, 0, 25);
+            ofLogVerbose() << "Fade in " << fade;
         }
-        else if (fades[currentMovie].out && (videos[currentMovie].getTotalNumFrames()-videos[currentMovie].getCurrentFrame())<25) {
-            fade = 1.0f / 25.0f * CLAMP(videos[currentMovie].getTotalNumFrames()-videos[currentMovie].getCurrentFrame(), 0, 25);
-            ofLogVerbose() << "Fade out " << fade << endl;
+        else if (players[currentMovie].fades.out && (players[currentMovie].video.getTotalNumFrames()-players[currentMovie].video.getCurrentFrame())<25) {
+            fade = 1.0f / 25.0f * CLAMP(players[currentMovie].video.getTotalNumFrames()-players[currentMovie].video.getCurrentFrame(), 0, 25);
+            ofLogVerbose() << "Fade out " << fade;
         }
         ofPushStyle();
         ofEnableBlendMode(OF_BLENDMODE_ALPHA);
         ofSetColor(255 * fade, 255 * fade, 255 * fade, 255 * fade);
 		if (fade != old_fade) {
-			videos[currentMovie].setVolume(fade);		
-            ofLogVerbose() << "Fade Audio: " << fade << endl;
+			players[currentMovie].video.setVolume(fade);
+            ofLogVerbose() << "Fade Audio: " << fade;
 		}
-        videos[currentMovie].draw(x, y, w, h);
+        players[currentMovie].video.draw(x, y, w, h);
       	ofDisableBlendMode();
         ofPopStyle();
         ready = true;
 		old_fade = fade;
     }
     
-    if (videos[currentMovie==0?1:0].isLoaded() && hasPreview) {
-        videos[currentMovie==0?1:0].draw(w-w/4-2, 2, w/4, h/4);
+    if (players[pendingMovie].video.isLoaded() && hasPreview) {
+        players[pendingMovie].video.draw(w-w/4-2, 2, w/4, h/4);
     }
     
     if (hasPreview) {
@@ -227,7 +199,7 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         ofPopStyle();
     }
 
-	force_hide = videos[currentMovie].getCurrentFrame() == videos[currentMovie].getTotalNumFrames();
+	force_hide = players[currentMovie].video.getCurrentFrame() == players[currentMovie].video.getTotalNumFrames();
 
     return ready;
 }
@@ -237,7 +209,7 @@ void ofxGaplessVideoPlayer::start() {
 }
 
 void ofxGaplessVideoPlayer::stop() {
-    videos[0].close();
-    videos[1].close();
+    players[0].video.close();
+    players[1].video.close();
 }
 

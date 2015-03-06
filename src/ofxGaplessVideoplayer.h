@@ -8,9 +8,9 @@ class ofxGaplessVideoPlayer : public ofThread{
     
 private:
     
-	ofVideoPlayer videos[MAX_VIDEOS];
+//	ofVideoPlayer videos[MAX_VIDEOS];
 		
-    int currentMovie, loadTime, actionTimeout;
+    int currentMovie, pendingMovie;
     
     enum PStatus { empty, loading, loaded, ready, prerolling, playing, stopping };
     PStatus state;
@@ -19,9 +19,7 @@ private:
     PAction action;
 
     bool hasPreview, forcetrigger;
-
-    string name;
-
+    
     /* Command Queue */
     struct command {
         string c;
@@ -36,10 +34,20 @@ private:
         bool in;
         bool out;
     };
-    fade fades[MAX_VIDEOS];
-    bool in, out;
 
 
+    /* Players */
+    struct player {
+        ofVideoPlayer video;
+        fade          fades;
+        int           loadTime;
+        int           actionTimeout;
+    };
+    player players[MAX_VIDEOS];
+
+    void _loadMovie(string _name, bool _in, bool _out);
+    void _appendMovie(string _name, bool _in, bool _out);
+    void _triggerMovie(string _name);
     
 public:
     
@@ -51,10 +59,10 @@ public:
     
     int getCurrentMovie() {return currentMovie;}
     int getState() {return state;}
-    int getLoadTime() {return loadTime;}
+    int getLoadTime() {return players[currentMovie].video.isLoaded() ? players[currentMovie].loadTime : 0;}
     
-    int getCurrentFrame() {return videos[currentMovie].getCurrentFrame();}
-    int getTotalNumFrames() {return videos[currentMovie].getTotalNumFrames();}
+    int getCurrentFrame() {return players[currentMovie].video.isLoaded() ? players[currentMovie].video.getCurrentFrame() : 0;}
+    int getTotalNumFrames() {return players[currentMovie].video.isLoaded() ? players[currentMovie].video.getTotalNumFrames() : 0;}
     
     void setPreview(bool p);
     void togglePreview();
@@ -62,7 +70,6 @@ public:
     void loadMovie(string _name, bool _in, bool _out);
     void appendMovie(string _name, bool _in, bool _out);
     void triggerMovie(string _name);
-    
 
     void update();
     bool draw(int x, int y, int w, int h);
