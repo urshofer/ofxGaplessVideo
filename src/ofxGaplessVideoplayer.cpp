@@ -111,9 +111,21 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
         players[pendingMovie].video.setPaused(false);
         players[currentMovie].video.setPaused(true);
     }
+<<<<<<< HEAD
     else {
         _appendMovie(_name, false, false);
         players[pendingMovie].video.setPaused(false);
+=======
+    if (action == load || action == loadpivot) {
+        loadTime = actionTimeout = ofGetElapsedTimeMillis();
+        videos[currentMovie==0?1:0].setVolume(0);
+        videos[currentMovie==0?1:0].loadAsync(name);
+        loadTime = ofGetElapsedTimeMillis() - loadTime;
+        fades[currentMovie==0?1:0].in  = in;
+        fades[currentMovie==0?1:0].out = out;
+        state = loading;
+        forcetrigger = action==loadpivot?true:false;
+>>>>>>> FETCH_HEAD
     }
     pendingMovie = currentMovie;
     currentMovie = pendingMovie==1?0:1;
