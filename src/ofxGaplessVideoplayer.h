@@ -12,13 +12,11 @@ private:
 		
     int currentMovie, pendingMovie;
     
-    enum PStatus { empty, loading, loaded, ready, prerolling, playing, stopping };
+    enum PStatus { empty, ready, switching, switched };
     PStatus state;
-    
-    enum PAction { null, load, pivot, loadpivot };
-    PAction action;
 
-    bool hasPreview, forcetrigger;
+
+    bool hasPreview;
     
     /* Command Queue */
     struct command {
