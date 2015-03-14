@@ -12,7 +12,7 @@ private:
 		
     int currentMovie, pendingMovie;
     
-    enum PStatus { empty, ready, switching, switched };
+    enum PStatus { empty, ready, appended, switching, switched };
     PStatus state;
 
 

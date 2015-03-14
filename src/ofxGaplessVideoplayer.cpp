@@ -8,14 +8,12 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
 	players[0].actionTimeout   = 0;
 	players[1].actionTimeout   = 0;
     state           = empty;
-
 	
     
 	#ifdef TARGET_LINUX
 	players[0].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
 	players[1].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
 	#endif
-
 }
 
 // Desonstructor
@@ -38,13 +36,14 @@ void ofxGaplessVideoPlayer::togglePreview(){
 // Enqueue Function: triggered from another thread
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::loadMovie(string _name, bool _in, bool _out){
+    if (state == empty) return;
     ofLogVerbose() << "+ [net] loadMovie: " << _name;
     ofxGaplessVideoPlayer::command c;
     c.c = "loadMovie";
     c.n = _name;
     c.i = _in;
     c.o = _out;
-    if (lock() && state != empty) {
+    if (lock()) {
         queue.push_back(c);
         unlock();
     }
@@ -56,13 +55,14 @@ void ofxGaplessVideoPlayer::loadMovie(string _name, bool _in, bool _out){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::appendMovie(string _name, bool _in, bool _out){
+    if (state == empty) return;
     ofLogVerbose() << "+ [net] appendMovie: " << _name;
     ofxGaplessVideoPlayer::command c;
     c.c = "appendMovie";
     c.n = _name;
     c.i = _in;
     c.o = _out;
-    if (lock() && state != empty) {
+    if (lock()) {
         queue.push_back(c);
         unlock();
     }
@@ -73,13 +73,14 @@ void ofxGaplessVideoPlayer::appendMovie(string _name, bool _in, bool _out){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::triggerMovie(string _name){
+    if (state == empty) return;
     ofLogVerbose() << "+ [net] triggerMovie: " << _name;
     ofxGaplessVideoPlayer::command c;
     c.c = "triggerMovie";
     c.n = _name;
     c.i = false;
     c.o = false;
-    if (lock() && state != empty) {
+    if (lock()) {
         queue.push_back(c);
         unlock();
     }
@@ -101,31 +102,37 @@ void ofxGaplessVideoPlayer::_loadMovie(string _name, bool _in, bool _out){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
+    if (state != ready) return;
+
     ofLogVerbose() << "        " << _name << " appended";
     players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis();
-    players[pendingMovie].loadTime = players[pendingMovie].actionTimeout;
-//    players[pendingMovie].video.setVolume(0);
-    players[pendingMovie].video.close();
-#ifdef TARGET_OSX
-//	players[pendingMovie].video.getPlayer<ofAVFoundationPlayer>()->videoPlayer =  [[ofAVFoundationVideoPlayer alloc] init]
-#endif
+//    players[pendingMovie].video.close();
+    players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis() - players[pendingMovie].actionTimeout;
+
+    players[pendingMovie].loadTime = ofGetElapsedTimeMillis();
     players[pendingMovie].video.loadAsync(_name);
-//    players[pendingMovie].video.setPaused(true);
+    players[pendingMovie].loadTime = ofGetElapsedTimeMillis() - players[pendingMovie].loadTime;
+
     players[pendingMovie].fades.in  = _in;
     players[pendingMovie].fades.out = _out;
-    players[pendingMovie].loadTime = ofGetElapsedTimeMillis() - players[pendingMovie].loadTime;
+ 
+    state = appended;
     
+    ofLogError() << "[" << pendingMovie << "] Loading: " << players[pendingMovie].loadTime << " Closing: " << players[pendingMovie].actionTimeout;
 }
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::_triggerMovie(string _name){
-    ofLogVerbose() << "        " << _name << " triggered";
-
     if(players[pendingMovie].video.isLoaded()) {
+        ofLogVerbose() << "        " << _name << " triggered";
         players[pendingMovie].video.play();
     }
     else {
-        _appendMovie(_name, false, false);
+        ofLogError() << "        " << _name << " forcefully triggered";
+        players[pendingMovie].video.close();
+        players[pendingMovie].video.load(_name);
+        players[pendingMovie].fades.in  = false;
+        players[pendingMovie].fades.out = false;
         players[pendingMovie].video.play();
     }
     state = switching;
@@ -136,6 +143,8 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::update(){
 
+    
+    
     if (state==empty) state = ready;
     
     if (queue.size()>0) {
@@ -150,6 +159,7 @@ void ofxGaplessVideoPlayer::update(){
             ofLogVerbose() << "x update: no lock!";
         }
 
+
         if (next_command.c == "loadMovie") {
             _loadMovie(next_command.n,next_command.i,next_command.o);
         }
@@ -160,10 +170,21 @@ void ofxGaplessVideoPlayer::update(){
             _triggerMovie(next_command.n);
         }
     }
-//    if (players[0].video.isPlaying())
-        players[0].video.update();
-//    if (players[1].video.isPlaying())
-        players[1].video.update();
+    int t = ofGetElapsedTimeMillis();
+    players[currentMovie].video.update();
+    t = ofGetElapsedTimeMillis() - t;
+    if (t>10) {
+        ofLogError() << "Updating Current: " << ofToString(t);
+    }
+    t = ofGetElapsedTimeMillis();
+    players[pendingMovie].video.update();
+    t = ofGetElapsedTimeMillis() - t;
+    if (t>10) {
+        ofLogError() << "Updating Pending: " << ofToString(t);
+    }
+
+    
+
     
     if (state == switched) {
         players[pendingMovie].video.setVolume(0.0f);
@@ -182,6 +203,7 @@ void ofxGaplessVideoPlayer::update(){
             }
         }
     }
+    
 }
 
 
