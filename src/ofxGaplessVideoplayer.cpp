@@ -109,7 +109,12 @@ void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
 
     ofLogVerbose() << "        " << _name << " appended";
     players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis();
-//    players[pendingMovie].video.close();
+    #if defined(MAC_OS_X_VERSION_10_8)
+    players[pendingMovie].video.close();
+    #endif
+    #if defined(MAC_OS_X_VERSION_10_9)
+    players[pendingMovie].video.close();
+    #endif
     players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis() - players[pendingMovie].actionTimeout;
 
     players[pendingMovie].loadTime = ofGetElapsedTimeMillis();
