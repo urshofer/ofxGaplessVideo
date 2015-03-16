@@ -2,6 +2,7 @@
 #define _THREADED_VIDEOPLAYER
 
 #include "ofMain.h"
+#include "threadedPlayer.h"
 #define MAX_VIDEOS 2
 
 class ofxGaplessVideoPlayer : public ofThread{
@@ -36,6 +37,7 @@ private:
 
     /* Players */
     struct player {
+//        threadedPlayer video;
         ofVideoPlayer video;
         fade          fades;
         int           loadTime;

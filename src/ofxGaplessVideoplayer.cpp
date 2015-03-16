@@ -14,6 +14,9 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
 	players[0].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
 	players[1].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
 	#endif
+//	players[0].video.start();
+//	players[1].video.start();
+
 }
 
 // Desonstructor
@@ -170,20 +173,22 @@ void ofxGaplessVideoPlayer::update(){
             _triggerMovie(next_command.n);
         }
     }
-    int t = ofGetElapsedTimeMillis();
-    players[currentMovie].video.update();
-    t = ofGetElapsedTimeMillis() - t;
-    if (t>10) {
-        ofLogError() << "Updating Current: " << ofToString(t);
+    if(players[currentMovie].video.isLoaded()) {
+        int t = ofGetElapsedTimeMillis();
+        players[currentMovie].video.update();
+        t = ofGetElapsedTimeMillis() - t;
+        if (t>10) {
+            ofLogError() << "Updating Current: " << ofToString(t);
+        }
     }
-    t = ofGetElapsedTimeMillis();
-    players[pendingMovie].video.update();
-    t = ofGetElapsedTimeMillis() - t;
-    if (t>10) {
-        ofLogError() << "Updating Pending: " << ofToString(t);
+    if(players[pendingMovie].video.isLoaded()) {
+        int t = ofGetElapsedTimeMillis();
+        players[pendingMovie].video.update();
+        t = ofGetElapsedTimeMillis() - t;
+        if (t>10) {
+            ofLogError() << "Updating Pending: " << ofToString(t);
+        }
     }
-
-    
 
     
     if (state == switched) {

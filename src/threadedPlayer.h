@@ -1,150 +1,209 @@
-#ifndef _THREADED_LOADER
-#define _THREADED_LOADER
+#ifndef _THREADED_PLAYER
+#define _THREADED_PLAYER
 
 #include "ofMain.h"
-#include "string.h"
 
-
-#include "json/json.h"
-#include <unistd.h>
-#include <iostream>
-#include <fstream>
-
-class threadedLoader : public ofThread{
+class threadedPlayer : public ofThread{
 
 private:
 
-	string			apiURL, apiKEY, fileMissing;
-	ofMutex			mutex;	
-    bool            isDownloading, triggerDownload;
+    /* Player */
+    
+    ofVideoPlayer player;
+    
+    /* Texture */
+    
+    ofTexture tex;
+    
+    
+    /* Command Queue */
+    struct c {
+        string command;
+        float par_float;
+        bool par_bool;
+        string par_string;
+    };
+    deque<c>    queue;
 
+    /* State Struct */
+    struct g {
+        int	getCurrentFrame;
+        int	getTotalNumFrames;
+        bool isFrameNew;
+        bool isPaused;
+        bool isLoaded;
+        bool isPlaying;
+    };
+    g           getters;
+    
+    /* Push Command */
+    void push_command(string _name, string _stringParam = "", bool _bparam = false, float _fparam = 0.0f){
+        c c;
+        c.command = _name;
+        c.par_float = _fparam;
+        c.par_bool = _bparam;
+        c.par_string = _stringParam;
+        if (lock()) {
+            queue.push_back(c);
+            unlock();
+        }
+        else {
+            ofLogVerbose() << "x loadMovie: no lock!";
+        }
+    }
+    
+    
 public:
 
-    threadedLoader() {
+   //--------------------------
+   // Setters - Piped on Queue
+
+    
+    bool load(string name) {
+        push_command("load", name);
     }
-
-   bool start(string apiurl, string apikey){
-   	apiURL = apiurl;
-   	apiKEY = apikey;
-    isDownloading = false;
-    triggerDownload = false;
-    fileMissing = "";
-    startThread();
-    return true;
-   }
-   
-   void restart() {
-   	startThread();   	
-   }
-
-   bool stop(){
-   	stopThread();
-//	waitForThread();
-//	progress = true;
-	std::cout  << "TO Stop\n";
-   	return true;
-   }
-
-    string downloadFile() {
-        ofScopedLock lock(mutex);
-        return fileMissing;
+    bool loadAsync(string name) {
+        push_command("load", name);
+    }
+    void close() {
+        push_command("close");
+    }
+    void play() {
+        push_command("play");
+    }
+    void _stop() {
+        push_command("stop");
+    }
+    void setVolume(float volume) {
+        push_command("setVolume",  "", false, volume);
+    }
+    void setPaused(bool bPause) {
+        push_command("setPaused",  "", bPause);
     }
     
-    bool active() {
+
+    
+    // Getters
+    int	getCurrentFrame() {
         ofScopedLock lock(mutex);
-        return isDownloading;
+        return getters.getCurrentFrame;
+    }
+    int	getTotalNumFrames() {
+        ofScopedLock lock(mutex);
+        return getters.getTotalNumFrames;
+    }
+    bool isFrameNew() {
+        ofScopedLock lock(mutex);
+        return getters.isFrameNew;
+    }
+    bool isPaused() {
+        ofScopedLock lock(mutex);
+        return getters.isPaused;
+    }
+    bool isLoaded() {
+        ofScopedLock lock(mutex);
+        return getters.isLoaded;
+    }
+    bool isPlaying() {
+        ofScopedLock lock(mutex);
+        return getters.isPlaying;
     }
     
-    void startDownload() {
-        if (lock()) {
-            if (!isDownloading) {
-                triggerDownload = true;
-				ofLogVerbose() << "- File missing. Restart Download thread.\n";
-
-            }
-            else {
-				ofLogVerbose() << "- Already running.\n";
+    // Update copy pixels into texture
+    void update() {
+/*        if (lock()) {
+            if (player.isFrameNew()) {
+                if (player.getWidth() != tex.getWidth() || player.getHeight() != tex.getHeight()) {
+                    tex.allocate(player.getPixels());
+                }
+                tex.loadData(player.getPixels());
             }
             unlock();
         }
+ */   }
+
+    // Draw texture
+    void draw(float x, float y, float w, float h) {
+      tex.draw(x,y,w,h);
     }
+    
+    
+    
+   //--------------------------
+    
 
-    void doDownload() {
-        // Get List of Files from Server
-        isDownloading = true;
-        triggerDownload = false;
-		ofLogVerbose() << "Start Download";
-		ofDirectory DIR;
-		#ifdef TARGET_OF_IPHONE
-		        string localDir = ofxiOSGetDocumentsDirectory() + "movies/";
-		#else
-		        string localDir = ofToDataPath("movies/", true);
-		#endif
-		if (!DIR.doesDirectoryExist(localDir)) {
-            if (DIR.createDirectory(localDir)) {
-				ofLogVerbose() << "Creating local dir" << endl;
-            }
-            else {
-				ofLogError() << "Could not create local dir" << endl;
-                ofExit();
-            }
-        }
-        int nImages = DIR.listDir(localDir);
-		
-        Json::Reader 	reader;
-        Json::Value 	root;
-        ofHttpResponse resp = ofLoadURL(apiURL + "/List/" + apiKEY);
+   threadedPlayer() {
+//       player.setUseTexture(false);
+   }
 
-        bool parsingSuccessful = reader.parse(resp.data, root );
-        if ( !parsingSuccessful ) {
-                ofLogError() << "Failed to parse JSON\n" << reader.getFormatedErrorMessages() << " URL: " << apiURL << "/List/" << apiKEY;
-            stop();
-        }
-        
-        ofLogVerbose() << "Remote: " << root.size() << " Files. Local: " << nImages << " Files...";
-        
-        if (root.isArray() == 1) {
-            /* Loop thru all elements */
-            for ( unsigned int index = 0; index < root.size(); ++index )  {
-                
-                /* Exit Loop if the thread has been stopped... */
-                if (!isThreadRunning()) {
-                    break;
-                }
-
-                string localPath = localDir + root[index]["f"].asString();
-
-                bool _missing = true;
-                for(int i = 0; i < nImages; i++){
-                    if (DIR.getPath(i)==localPath) {
-                        _missing = false;
-//                        ofLogVerbose() << "OK " << DIR.getPath(i) << " vs " << localPath << endl;
-                    }
-                }
-                
-                if (_missing)
-                {
-                    fileMissing = root[index]["f"].asString();
-                    ofLogVerbose() << "MISSING " << "movies/" << fileMissing << endl;
-                    ofSaveURLTo(apiURL + "/Download/" + apiKEY + "/" + root[index]["f"].asString(), localPath);
-    				ofLogVerbose() << "Downloading " << apiURL << "/Download/" << apiKEY + "/" << root[index]["f"].asString();
-                }
-            }
-        }
-        fileMissing = "";
-        isDownloading = false;
-    }
+   bool start(){
+       startThread();
+       return true;
+   }
+   
+   void stop(){
+    stopThread();
+    player.close();
+    std::cout  << "TO Stop\n";
+   }
 
 
    //--------------------------
    void threadedFunction(){
-       int timeout = ofGetElapsedTimeMillis();
        while (isThreadRunning()) {
-           if (!isDownloading && (triggerDownload || ofGetElapsedTimeMillis() - timeout > 30000)) {
-               doDownload();
-               timeout = ofGetElapsedTimeMillis();
+           // Working on Command Queue
+           if (queue.size()>0) {
+               c next;
+               if (lock()) {
+                   next = queue.front();
+                   queue.pop_front();
+                   unlock();
+               }
+
+               ofLogError() << "******************************************************";
+               if (next.command == "load") {
+                   ofLogError() << "------------------ COMMAND: " << next.command << " / " << next.par_string;
+                   if (player.isLoaded())
+                       player.close();
+                   player.load(next.par_string);
+               }
+               else if (next.command == "close") {
+                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   if (player.isLoaded())
+                       player.close();
+               }
+               else if (next.command == "play") {
+                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   if (player.isLoaded())
+                       player.play();
+               }
+               else if (next.command == "stop") {
+                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   if (player.isLoaded())
+                       player.stop();
+               }
+               else if (next.command == "setVolume") {
+                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   player.setVolume(next.par_float);
+               }
+               else if (next.command == "setPaused") {
+                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   player.setPaused(next.par_bool);
+               }
+               ofLogError() << "******************************************************";
+
            }
-           ofSleepMillis(25);
+           player.update();           
+           if (lock()) {
+               getters.getCurrentFrame   = player.getCurrentFrame();
+               getters.getTotalNumFrames = player.getTotalNumFrames();
+               getters.isFrameNew        = player.isFrameNew();
+               getters.isPaused          = player.isPaused();
+               getters.isLoaded          = player.isLoaded();
+               getters.isPlaying         = player.isPlaying();
+               unlock();
+           }
+           ofSleepMillis(5);
        }
    }
 
