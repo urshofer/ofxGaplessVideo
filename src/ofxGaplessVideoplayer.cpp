@@ -165,20 +165,20 @@ void ofxGaplessVideoPlayer::update(){
         }
     }
     if(players[currentMovie].video.isLoaded()) {
-        int t = ofGetElapsedTimeMillis();
+//        int t = ofGetElapsedTimeMillis();
         players[currentMovie].video.update();
-        t = ofGetElapsedTimeMillis() - t;
-        if (t>10) {
-            ofLogError() << "Updating Current: " << ofToString(t);
-        }
+//        t = ofGetElapsedTimeMillis() - t;
+//        if (t>10) {
+//            ofLogError() << "Updating Current: " << ofToString(t);
+//        }
     }
     if(players[pendingMovie].video.isLoaded()) {
-        int t = ofGetElapsedTimeMillis();
+//        int t = ofGetElapsedTimeMillis();
         players[pendingMovie].video.update();
-        t = ofGetElapsedTimeMillis() - t;
-        if (t>10) {
-            ofLogError() << "Updating Pending: " << ofToString(t);
-        }
+//        t = ofGetElapsedTimeMillis() - t;
+//        if (t>10) {
+//            ofLogError() << "Updating Pending: " << ofToString(t);
+//        }
     }
 
     
