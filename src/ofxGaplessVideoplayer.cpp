@@ -8,15 +8,6 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
 	players[0].actionTimeout   = 0;
 	players[1].actionTimeout   = 0;
     state           = empty;
-	
-    
-	#ifdef TARGET_LINUX
-	players[0].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
-	players[1].video.getPlayer<ofGstVideoPlayer>()->setAsynchronousLoad(true);
-	#endif
-//	players[0].video.start();
-//	players[1].video.start();
-
 }
 
 // Desonstructor
@@ -109,7 +100,7 @@ void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
 
     ofLogVerbose() << "        " << _name << " appended";
     players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis();
-    players[pendingMovie].video.close();
+//    players[pendingMovie].video.close();
     players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis() - players[pendingMovie].actionTimeout;
 
     players[pendingMovie].loadTime = ofGetElapsedTimeMillis();
