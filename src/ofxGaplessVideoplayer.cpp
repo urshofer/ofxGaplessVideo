@@ -1,4 +1,7 @@
 #include "ofxGaplessVideoplayer.h"
+#ifdef GSTREAMER_ON_OSX
+#include "ofGstVideoPlayer.h"
+#endif
 
 // Constructor
 ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
@@ -7,6 +10,10 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
     pendingMovie    = 1;
 	players[0].actionTimeout   = 0;
 	players[1].actionTimeout   = 0;
+    #ifdef GSTREAMER_ON_OSX
+    players[0].video.setPlayer(ofPtr<ofGstVideoPlayer>(new ofGstVideoPlayer));
+    players[1].video.setPlayer(ofPtr<ofGstVideoPlayer>(new ofGstVideoPlayer));
+    #endif
     state           = empty;
 }
 

@@ -3,6 +3,7 @@
 
 #include "ofMain.h"
 #include "threadedPlayer.h"
+
 #define MAX_VIDEOS 2
 
 class ofxGaplessVideoPlayer : public ofThread{
