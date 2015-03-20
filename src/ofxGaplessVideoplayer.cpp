@@ -1,3 +1,5 @@
+#define GSTREAMER_ON_OSX
+
 #include "ofxGaplessVideoplayer.h"
 #ifdef GSTREAMER_ON_OSX
 #include "ofGstVideoPlayer.h"
@@ -130,8 +132,8 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
     }
     else {
         ofLogError() << "        " << _name << " forcefully triggered";
-        players[pendingMovie].video.close();
-        players[pendingMovie].video.load(_name);
+//        players[pendingMovie].video.close();
+        players[pendingMovie].video.loadAsync(_name);
         players[pendingMovie].fades.in  = false;
         players[pendingMovie].fades.out = false;
         players[pendingMovie].video.play();
@@ -143,7 +145,7 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::update(){
-    
+
     if (state==empty) state = ready;
     
     if (queue.size()>0) {
@@ -170,19 +172,11 @@ void ofxGaplessVideoPlayer::update(){
         }
     }
 
-    if(players[currentMovie].video.isLoaded()) {
-        players[currentMovie].video.update();
-    }
-
-    if(players[pendingMovie].video.isLoaded()) {
-        players[pendingMovie].video.update();
-    }
     
     /* After Append & Loaded: Switch to Pause and prepare for Trigger */
     
     if (state == appended) {
         if(players[pendingMovie].video.isLoaded()) {
-            players[pendingMovie].video.firstFrame();
             players[pendingMovie].video.setPaused(true);
             state = waiting;
         }
@@ -193,14 +187,13 @@ void ofxGaplessVideoPlayer::update(){
     if (state == switched) {
         players[pendingMovie].video.setVolume(0.0f);
         players[pendingMovie].video.setPaused(true);
-        players[pendingMovie].video.firstFrame();
         state = ready;
     }
     
     /* During Switch: Wait until not paused and current Frame > 1 */
     
     if (state == switching) {
-        if(!players[pendingMovie].video.isPaused() && players[pendingMovie].video.getCurrentFrame() > 1) {
+        if(players[pendingMovie].video.isPlaying() && players[pendingMovie].video.getCurrentFrame() > 1) {
             pendingMovie = currentMovie;
             currentMovie = pendingMovie==1?0:1;
             state = switched;
@@ -210,6 +203,12 @@ void ofxGaplessVideoPlayer::update(){
             }
         }
     }
+
+    if(players[currentMovie].video.isLoaded())
+        players[currentMovie].video.update();
+    if(players[pendingMovie].video.isLoaded())
+        players[pendingMovie].video.update();
+    
     
 }
 
@@ -274,7 +273,7 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         os << "Paused  : " << players[pendingMovie].video.isPaused() << endl;
         os << "Loaded  : " << players[pendingMovie].video.isLoaded() << endl;
         
-        os << "State  : " << state << endl;
+        os << "State  : " << state_string[state] << endl;
         
         ofDrawBitmapString(os.str(), w-w/4+2, 17 + h/4);
 
