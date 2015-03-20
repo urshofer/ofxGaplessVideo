@@ -124,7 +124,7 @@ void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::_triggerMovie(string _name){
-    if(players[pendingMovie].video.isLoaded()) {
+    if(state == waiting) {
         ofLogVerbose() << "        " << _name << " triggered";
         players[pendingMovie].video.setPaused(false);
     }
@@ -178,13 +178,13 @@ void ofxGaplessVideoPlayer::update(){
         players[pendingMovie].video.update();
     }
     
-    /* After Append & Loaded: Switch to Pause */
+    /* After Append & Loaded: Switch to Pause and prepare for Trigger */
     
     if (state == appended) {
         if(players[pendingMovie].video.isLoaded()) {
             players[pendingMovie].video.firstFrame();
             players[pendingMovie].video.setPaused(true);
-            state = ready;
+            state = waiting;
         }
     }
 
