@@ -274,6 +274,8 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         os << "Paused  : " << players[pendingMovie].video.isPaused() << endl;
         os << "Loaded  : " << players[pendingMovie].video.isLoaded() << endl;
         
+        os << "State  : " << state << endl;
+        
         ofDrawBitmapString(os.str(), w-w/4+2, 17 + h/4);
 
         ofDisableAntiAliasing();
