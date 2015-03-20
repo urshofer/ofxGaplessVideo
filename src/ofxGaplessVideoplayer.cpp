@@ -212,13 +212,9 @@ void ofxGaplessVideoPlayer::update(){
 
 //--------------------------------------------------------------
 bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
-
+    ofLogVerbose() << "Start Draw... ";
     
     static bool isDrawing = false;
-//	static bool force_hide = false;
-
-    
-
 
     int current_pos = players[currentMovie].video.getCurrentFrame();
     int total_pos = players[currentMovie].video.getTotalNumFrames();
@@ -256,7 +252,7 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
     if (hasPreview) {
         ofPushStyle();
         ofSetColor(0, 0, 0, 150);
-        ofRect(w-w/4-2, 0, w/4+2, h);
+        ofDrawRectangle(w-w/4-2, 0, w/4+2, h);
         ofNoFill();
         ofSetColor(255, 0, 0);
         ostringstream os;
@@ -279,16 +275,12 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         ofDisableAntiAliasing();
         ofSetColor(255, 255, 255);
         players[pendingMovie].video.draw(w-w/4, 1, w/4-1, h/4-1);
-        ofRect(w-w/4, 1, w/4-1, h/4-1);
+        ofDrawRectangle(w-w/4, 1, w/4-1, h/4-1);
         
         ofPopStyle();
     }
 
-/*    if (players[currentMovie].video.getCurrentFrame() == players[currentMovie].video.getTotalNumFrames()) {
-        force_hide = true;
-        ofLogVerbose() << "Force HIDE";
-    }
-*/
+    ofLogVerbose() << "Stop Draw... ";
 
     return isDrawing;
 }
