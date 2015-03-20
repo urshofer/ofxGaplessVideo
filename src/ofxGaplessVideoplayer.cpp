@@ -221,8 +221,9 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
 
     int current_pos = players[currentMovie].video.getCurrentFrame();
     int total_pos = players[currentMovie].video.getTotalNumFrames();
+    float pos = players[currentMovie].video.getPosition();
 
-    if (!players[currentMovie].video.isPaused() && current_pos != total_pos) {
+    if (!players[currentMovie].video.isPaused() && pos < 1) {
         ofPushStyle();
         if (players[currentMovie].fades.out || players[currentMovie].fades.in) {
             float fade = 1.0f;
@@ -261,7 +262,7 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         ostringstream os;
         os << "Current"  << endl;
         os << "Load    : " << players[currentMovie].loadTime << endl;
-        os << "Frame   : " << current_pos << "/" << total_pos << endl;
+        os << "Frame   : " << current_pos << "/" << total_pos << "/" << pos << endl;
         os << "Playing : " << players[currentMovie].video.isPlaying() << endl;
         os << "Paused  : " << players[currentMovie].video.isPaused() << endl;
         os << "Loaded  : " << players[currentMovie].video.isLoaded() << endl << endl;
