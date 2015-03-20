@@ -126,7 +126,7 @@ void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
 void ofxGaplessVideoPlayer::_triggerMovie(string _name){
     if(players[pendingMovie].video.isLoaded()) {
         ofLogVerbose() << "        " << _name << " triggered";
-        players[pendingMovie].video.play();
+        players[pendingMovie].video.setPaused(false);
     }
     else {
         ofLogError() << "        " << _name << " forcefully triggered";
@@ -143,8 +143,6 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::update(){
-
-    
     
     if (state==empty) state = ready;
     
@@ -171,32 +169,37 @@ void ofxGaplessVideoPlayer::update(){
             _triggerMovie(next_command.n);
         }
     }
+
     if(players[currentMovie].video.isLoaded()) {
-//        int t = ofGetElapsedTimeMillis();
         players[currentMovie].video.update();
-//        t = ofGetElapsedTimeMillis() - t;
-//        if (t>10) {
-//            ofLogError() << "Updating Current: " << ofToString(t);
-//        }
-    }
-    if(players[pendingMovie].video.isLoaded()) {
-//        int t = ofGetElapsedTimeMillis();
-        players[pendingMovie].video.update();
-//        t = ofGetElapsedTimeMillis() - t;
-//        if (t>10) {
-//            ofLogError() << "Updating Pending: " << ofToString(t);
-//        }
     }
 
+    if(players[pendingMovie].video.isLoaded()) {
+        players[pendingMovie].video.update();
+    }
+    
+    /* After Append & Loaded: Switch to Pause */
+    
+    if (state == appended) {
+        if(players[pendingMovie].video.isLoaded()) {
+            players[pendingMovie].video.setPaused(false);
+            state = ready;
+        }
+    }
+
+    /* After Switch: Pause other clip, mute */
     
     if (state == switched) {
         players[pendingMovie].video.setVolume(0.0f);
         players[pendingMovie].video.setPaused(true);
+        players[pendingMovie].video.firstFrame();
         state = ready;
     }
     
+    /* During Switch: Wait until not paused and current Frame > 1 */
+    
     if (state == switching) {
-        if(players[pendingMovie].video.isPlaying() && players[pendingMovie].video.getCurrentFrame() > 1) {
+        if(!players[pendingMovie].video.isPaused() && players[pendingMovie].video.getCurrentFrame() > 1) {
             pendingMovie = currentMovie;
             currentMovie = pendingMovie==1?0:1;
             state = switched;
