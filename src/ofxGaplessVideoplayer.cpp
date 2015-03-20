@@ -182,7 +182,7 @@ void ofxGaplessVideoPlayer::update(){
     
     if (state == appended) {
         if(players[pendingMovie].video.isLoaded()) {
-            players[pendingMovie].video.setPaused(false);
+            players[pendingMovie].video.setPaused(true);
             state = ready;
         }
     }
