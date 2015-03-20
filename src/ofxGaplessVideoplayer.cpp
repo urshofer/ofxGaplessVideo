@@ -1,4 +1,7 @@
-#define GSTREAMER_ON_OSX
+// Uncomment this to compile against GStreamer
+// On Linux, GStreamer is the default anyway.
+// #define GSTREAMER_ON_OSX
+
 
 #include "ofxGaplessVideoplayer.h"
 #ifdef GSTREAMER_ON_OSX
