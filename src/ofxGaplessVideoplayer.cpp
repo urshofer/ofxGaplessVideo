@@ -222,7 +222,7 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
     int current_pos = players[currentMovie].video.getCurrentFrame();
     int total_pos = players[currentMovie].video.getTotalNumFrames();
 
-    if (!players[currentMovie].video.isPaused()) {
+    if (!players[currentMovie].video.isPaused() && current_pos != total_pos) {
         ofPushStyle();
         if (players[currentMovie].fades.out || players[currentMovie].fades.in) {
             float fade = 1.0f;
