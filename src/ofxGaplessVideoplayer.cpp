@@ -223,7 +223,7 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
     int current_pos = players[currentMovie].video.getCurrentFrame();
     int total_pos = players[currentMovie].video.getTotalNumFrames();
 
-    if (!players[currentMovie].video.isPaused() && current_pos != total_pos) {
+    if (players[currentMovie].video.isPlaying()) {
         ofPushStyle();
         if (players[currentMovie].fades.out || players[currentMovie].fades.in) {
             float fade = 1.0f;
@@ -253,23 +253,34 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         isDrawing = true;
     }
     
-    if (hasPreview && players[pendingMovie].video.isLoaded()) {
-        players[pendingMovie].video.draw(w-w/4-2, 2, w/4, h/4);
-    }
-    
     if (hasPreview) {
         ofPushStyle();
+        ofSetColor(0, 0, 0, 150);
+        ofRect(w-w/4-2, 0, w/4+2, h);
         ofNoFill();
-        ofSetColor(255, 255, 255);
-        ofRect(w-w/4-2, 2, w/4, h/4);
         ofSetColor(255, 0, 0);
         ostringstream os;
-        os << "Activ : " << getCurrentMovie() << endl;
-        os << "State : " << getState() << endl;
-        os << "Load  : " << getLoadTime() << endl;
-        os << "Frame : " << getCurrentFrame() << "/" << getTotalNumFrames() << endl;
-        os << "FPS   : " << ofGetFrameRate() << endl;
-        ofDrawBitmapString(os.str(), w-w/4+2, 15);
+        os << "Current"  << endl;
+        os << "Load    : " << players[currentMovie].loadTime << endl;
+        os << "Frame   : " << current_pos << "/" << total_pos << endl;
+        os << "Playing : " << players[currentMovie].video.isPlaying() << endl;
+        os << "Paused  : " << players[currentMovie].video.isPaused() << endl;
+        os << "Loaded  : " << players[currentMovie].video.isLoaded() << endl << endl;
+        
+        os << "Pending"  << endl;
+        os << "Load    : " << players[pendingMovie].loadTime << endl;
+        os << "Frame   : " << players[pendingMovie].video.getCurrentFrame() << "/" << players[pendingMovie].video.getTotalNumFrames() << endl;
+        os << "Playing : " << players[pendingMovie].video.isPlaying() << endl;
+        os << "Paused  : " << players[pendingMovie].video.isPaused() << endl;
+        os << "Loaded  : " << players[pendingMovie].video.isLoaded() << endl;
+        
+        ofDrawBitmapString(os.str(), w-w/4+2, 17 + h/4);
+
+        ofDisableAntiAliasing();
+        ofSetColor(255, 255, 255);
+        players[pendingMovie].video.draw(w-w/4, 1, w/4-1, h/4-1);
+        ofRect(w-w/4, 1, w/4-1, h/4-1);
+        
         ofPopStyle();
     }
 
