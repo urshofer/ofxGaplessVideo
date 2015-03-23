@@ -1,6 +1,6 @@
 // Uncomment this to compile against GStreamer
 // On Linux, GStreamer is the default anyway.
-// #define GSTREAMER_ON_OSX
+//#define GSTREAMER_ON_OSX
 
 
 #include "ofxGaplessVideoplayer.h"
@@ -16,8 +16,8 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
 	players[0].actionTimeout   = 0;
 	players[1].actionTimeout   = 0;
     #ifdef GSTREAMER_ON_OSX
-    players[0].video.setPlayer(ofPtr<ofGstVideoPlayer>(new ofGstVideoPlayer));
-    players[1].video.setPlayer(ofPtr<ofGstVideoPlayer>(new ofGstVideoPlayer));
+    players[0].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
+    players[1].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
     #endif
     state           = empty;
 }
