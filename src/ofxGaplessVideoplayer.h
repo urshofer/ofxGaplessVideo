@@ -14,9 +14,9 @@ private:
 		
     int currentMovie, pendingMovie;
     
-    enum PStatus { empty, ready, appended, waiting, switching, switched };
+    enum PStatus { empty, ready, appended, waiting, switching, switched, forceappended };
     PStatus state;
-    const string state_string[6] = {"empty", "ready", "appended", "waiting", "switching", "switched"};
+    const string state_string[7] = {"empty", "ready", "appended", "waiting", "switching", "switched", "forceappended"};
 
     bool hasPreview;
     

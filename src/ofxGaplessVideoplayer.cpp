@@ -15,10 +15,10 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
     pendingMovie    = 1;
 	players[0].actionTimeout   = 0;
 	players[1].actionTimeout   = 0;
-    #ifdef GSTREAMER_ON_OSX
+#ifdef GSTREAMER_ON_OSX
     players[0].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
     players[1].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
-    #endif
+#endif
     state           = empty;
 }
 
@@ -132,6 +132,7 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
     if(state == waiting) {
         ofLogVerbose() << "        " << _name << " triggered";
         players[pendingMovie].video.setPaused(false);
+        state = switching;
     }
     else {
         ofLogError() << "        " << _name << " forcefully triggered";
@@ -139,9 +140,10 @@ void ofxGaplessVideoPlayer::_triggerMovie(string _name){
         players[pendingMovie].video.loadAsync(_name);
         players[pendingMovie].fades.in  = false;
         players[pendingMovie].fades.out = false;
-        players[pendingMovie].video.play();
+//        players[pendingMovie].video.play();
+        state = forceappended;
     }
-    state = switching;
+    
 }
 
 
@@ -175,6 +177,15 @@ void ofxGaplessVideoPlayer::update(){
         }
     }
 
+    /* After Focde Trigger */
+    
+    if (state == forceappended) {
+        if(players[pendingMovie].video.isLoaded()) {
+            players[pendingMovie].video.setPaused(false);
+            state = switching;
+        }
+    }
+    
     
     /* After Append & Loaded: Switch to Pause and prepare for Trigger */
     
@@ -282,7 +293,9 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
 
         ofDisableAntiAliasing();
         ofSetColor(255, 255, 255);
-        players[pendingMovie].video.draw(w-w/4, 1, w/4-1, h/4-1);
+        if(players[pendingMovie].video.isLoaded()) {
+            players[pendingMovie].video.draw(w-w/4, 1, w/4-1, h/4-1);
+        }
         ofDrawRectangle(w-w/4, 1, w/4-1, h/4-1);
         
         ofPopStyle();
