@@ -2,7 +2,16 @@
 #define _THREADED_VIDEOPLAYER
 
 #include "ofMain.h"
-#include "threadedPlayer.h"
+
+#ifdef GSTREAMER_ON_OSX
+#include "ofGstVideoPlayer.h"
+#else
+    #ifdef TARGET_OSX
+    #include "threadedPlayer.h"
+    #endif
+#endif
+
+
 
 #define MAX_VIDEOS 2
 
@@ -38,8 +47,11 @@ private:
 
     /* Players */
     struct player {
-//        threadedPlayer video;
+#ifdef _THREADED_PLAYER
+        threadedPlayer video;
+#else
         ofVideoPlayer video;
+#endif
         fade          fades;
         int           loadTime;
         int           actionTimeout;

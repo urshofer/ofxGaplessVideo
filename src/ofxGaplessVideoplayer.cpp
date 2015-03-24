@@ -1,12 +1,10 @@
 // Uncomment this to compile against GStreamer
 // On Linux, GStreamer is the default anyway.
-//#define GSTREAMER_ON_OSX
+// #define GSTREAMER_ON_OSX
 
 
 #include "ofxGaplessVideoplayer.h"
-#ifdef GSTREAMER_ON_OSX
-#include "ofGstVideoPlayer.h"
-#endif
+
 
 // Constructor
 ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
@@ -19,6 +17,11 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
     players[0].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
     players[1].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
 #endif
+#ifdef _THREADED_PLAYER
+    players[0].video.start();
+    players[1].video.start();
+#endif
+    
     state           = empty;
 }
 
@@ -124,18 +127,18 @@ void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
  
     state = appended;
     
-    ofLogError() << "[" << pendingMovie << "] Loading: " << players[pendingMovie].loadTime << " Closing: " << players[pendingMovie].actionTimeout;
+    ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " appended";
 }
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::_triggerMovie(string _name){
     if(state == waiting) {
-        ofLogVerbose() << "        " << _name << " triggered";
+        ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " triggered";
         players[pendingMovie].video.setPaused(false);
         state = switching;
     }
     else {
-        ofLogError() << "        " << _name << " forcefully triggered";
+        ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " Force triggered";
 //        players[pendingMovie].video.close();
         players[pendingMovie].video.loadAsync(_name);
         players[pendingMovie].fades.in  = false;
@@ -287,7 +290,12 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         os << "Paused  : " << players[pendingMovie].video.isPaused() << endl;
         os << "Loaded  : " << players[pendingMovie].video.isLoaded() << endl;
         
-        os << "State  : " << state_string[state] << endl;
+        os << "State   : " << state_string[state] << endl << "------------------" << endl;
+#ifdef _THREADED_PLAYER
+        os << "Threaded Player" << endl;
+#else
+        os << "GStreamer Player" << endl;
+#endif
         
         ofDrawBitmapString(os.str(), w-w/4+2, 17 + h/4);
 
@@ -311,7 +319,12 @@ void ofxGaplessVideoPlayer::start() {
 }
 
 void ofxGaplessVideoPlayer::stop() {
+#ifdef _THREADED_PLAYER
+    players[0].video.stop();
+    players[1].video.stop();
+#else
     players[0].video.close();
     players[1].video.close();
+#endif
 }
 

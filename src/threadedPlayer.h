@@ -33,6 +33,7 @@ private:
         bool isPaused;
         bool isLoaded;
         bool isPlaying;
+        bool isMovieDone;
     };
     g           getters;
     
@@ -111,7 +112,7 @@ public:
     
     // Update copy pixels into texture
     void update() {
-/*        if (lock()) {
+        if (lock()) {
             if (player.isFrameNew()) {
                 if (player.getWidth() != tex.getWidth() || player.getHeight() != tex.getHeight()) {
                     tex.allocate(player.getPixels());
@@ -120,20 +121,26 @@ public:
             }
             unlock();
         }
- */   }
+   }
 
     // Draw texture
     void draw(float x, float y, float w, float h) {
       tex.draw(x,y,w,h);
     }
     
+    bool getIsMovieDone()
+    {
+        ofScopedLock lock(mutex);
+        return getters.isMovieDone;
+    }
     
     
    //--------------------------
     
 
    threadedPlayer() {
-//       player.setUseTexture(false);
+       player.setUseTexture(false);
+       player.close();
    }
 
    bool start(){
@@ -144,7 +151,7 @@ public:
    void stop(){
     stopThread();
     player.close();
-    std::cout  << "TO Stop\n";
+    std::cout  << "Player Stop\n";
    }
 
 
@@ -160,47 +167,49 @@ public:
                    unlock();
                }
 
-               ofLogError() << "******************************************************";
+               ofLogVerbose() << "******************************************************";
                if (next.command == "load") {
-                   ofLogError() << "------------------ COMMAND: " << next.command << " / " << next.par_string;
-                   if (player.isLoaded())
-                       player.close();
+                   ofLogVerbose() << "------------------ COMMAND: " << next.command << " / " << next.par_string;
+                   player.close();
                    player.load(next.par_string);
                }
                else if (next.command == "close") {
-                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   ofLogVerbose() << "------------------ COMMAND: " << next.command;
                    if (player.isLoaded())
                        player.close();
                }
                else if (next.command == "play") {
-                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   ofLogVerbose() << "------------------ COMMAND: " << next.command;
                    if (player.isLoaded())
                        player.play();
                }
                else if (next.command == "stop") {
-                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   ofLogVerbose() << "------------------ COMMAND: " << next.command;
                    if (player.isLoaded())
                        player.stop();
                }
                else if (next.command == "setVolume") {
-                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   ofLogVerbose() << "------------------ COMMAND: " << next.command;
                    player.setVolume(next.par_float);
                }
                else if (next.command == "setPaused") {
-                   ofLogError() << "------------------ COMMAND: " << next.command;
+                   ofLogVerbose() << "------------------ COMMAND: " << next.command;
                    player.setPaused(next.par_bool);
                }
-               ofLogError() << "******************************************************";
+               ofLogVerbose() << "******************************************************";
 
            }
-           player.update();           
            if (lock()) {
-               getters.getCurrentFrame   = player.getCurrentFrame();
-               getters.getTotalNumFrames = player.getTotalNumFrames();
-               getters.isFrameNew        = player.isFrameNew();
-               getters.isPaused          = player.isPaused();
                getters.isLoaded          = player.isLoaded();
-               getters.isPlaying         = player.isPlaying();
+               if (getters.isLoaded) {
+                   player.update();
+                   getters.getCurrentFrame   = player.getCurrentFrame();
+                   getters.getTotalNumFrames = player.getTotalNumFrames();
+                   getters.isFrameNew        = player.isFrameNew();
+                   getters.isPaused          = player.isPaused();
+                   getters.isPlaying         = player.isPlaying();
+                   getters.isMovieDone       = player.getIsMovieDone();
+               }
                unlock();
            }
            ofSleepMillis(5);
