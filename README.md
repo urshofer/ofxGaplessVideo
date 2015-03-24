@@ -46,3 +46,18 @@ Communication
 -------------
 
 Either send loadMovie signals over the net if you want to start a clip by a single command. To create a more accurate system, send a preload signal first and a trigger signal in the moment you really want to start the movie.
+
+
+Compilation & Patches
+---------------------
+
+ofxGaplessVideo runs the AVFoundationPlayer in a background thread on OSX. On Linux, GStreamer is used in the main thread. Since the AVFoundationPlayer is not meant to run in the background, a patched version is needed. Replace the files in the openFrameworks/libs/openframeworks/video directory with the ones provided in the patches directory of the ofxGaplessVideo repository. Linux should run out of the box.
+
+GStreamer on OSX
+----------------
+
+It's also possible to compile ofxGaplessVideo with GStreamer support on OSX. Uncomment
+
+
+
+
