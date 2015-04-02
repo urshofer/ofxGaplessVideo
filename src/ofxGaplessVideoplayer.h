@@ -5,10 +5,6 @@
 
 #ifdef GSTREAMER_ON_OSX
 #include "ofGstVideoPlayer.h"
-#else
-    #ifdef TARGET_OSX
-    #include "threadedPlayer.h"
-    #endif
 #endif
 
 
@@ -18,8 +14,6 @@
 class ofxGaplessVideoPlayer : public ofThread{
     
 private:
-    
-//	ofVideoPlayer videos[MAX_VIDEOS];
 		
     int currentMovie, pendingMovie;
     
@@ -47,11 +41,7 @@ private:
 
     /* Players */
     struct player {
-#ifdef _THREADED_PLAYER
-        threadedPlayer video;
-#else
         ofVideoPlayer video;
-#endif
         fade          fades;
         int           loadTime;
         int           actionTimeout;

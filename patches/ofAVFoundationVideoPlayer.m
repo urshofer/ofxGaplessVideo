@@ -29,11 +29,9 @@ static NSString * const kCurrentItemKey = @"currentItem";
 static const NSString * ItemStatusContext;
 
 - (id)init {
-	if (![NSThread isMainThread]) {
-		pool = [[NSAutoreleasePool alloc] init];
-	}
 	self = [super init];
 	if(self) {
+		
 		self.playerView = [[[ofAVFoundationVideoPlayerView alloc] initVideoPlayerView] autorelease];
 		
 		self.player = [[[AVPlayer alloc] init] autorelease];
@@ -79,14 +77,16 @@ static const NSString * ItemStatusContext;
 	return self;
 }
 
-- (void)dealloc {
-	
-	[(ofAVFoundationVideoPlayerView *)self.playerView setPlayer:nil];
-	[self.playerView removeFromSuperview];
-	self.playerView = nil;
+//---------------------------------------------------------- cleanup / dispose.
+- (void)dealloc
+{
+	if(self.playerView != nil) {
+		[(ofAVFoundationVideoPlayerView *)self.playerView setPlayer:nil];
+		[self.playerView removeFromSuperview];
+		self.playerView = nil;
+	}
 	
 	if(self.playerItem != nil) {
-
 		NSNotificationCenter * notificationCenter = [NSNotificationCenter defaultCenter];
 		[notificationCenter removeObserver:self
 									  name:AVPlayerItemDidPlayToEndTimeNotification
@@ -97,33 +97,36 @@ static const NSString * ItemStatusContext;
 	}
 	
 	[self removeTimeObserverFromPlayer];
-	[_player removeObserver:self forKeyPath:kRateKey];
 	
-	self.player = nil;
-	[_player release];
+	if(self.player != nil) {
+		[_player removeObserver:self forKeyPath:kRateKey];
+		
+		self.player = nil;
+		[_player release];
+	}
 	
-	[self.assetReader cancelReading];
-	self.assetReader = nil;
+	if(self.assetReader != nil) {
+		[self.assetReader cancelReading];
+		self.assetReader = nil;
+	}
+	
 	self.assetReaderVideoTrackOutput = nil;
 	self.assetReaderAudioTrackOutput = nil;
 	self.asset = nil;
 	
-	if(videoSampleBuffer) {
+	if(videoSampleBuffer != nil) {
 		CFRelease(videoSampleBuffer);
 		videoSampleBuffer = nil;
 	}
 	
-	if(audioSampleBuffer) {
+	if(audioSampleBuffer != nil) {
 		CFRelease(audioSampleBuffer);
 		audioSampleBuffer = nil;
 	}
-	if ([NSThread isMainThread]) {
-		[super dealloc];
-	}
-	else {
-		[pool drain];
-	}
+	
+	[super dealloc];
 }
+
 
 //---------------------------------------------------------- position / size.
 - (void)setVideoPosition:(CGPoint)position {
@@ -161,15 +164,11 @@ static const NSString * ItemStatusContext;
 	dispatch_semaphore_t sema = dispatch_semaphore_create(0);
 	dispatch_queue_t queue;
 	if(bAsync == YES){
-		queue = dispatch_get_main_queue();  // com.apple.main-thread
+		queue = dispatch_get_main_queue();
 	} else {
-		queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0); // Name: com.apple.root.default-qos
+		queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
 	}
-	if (!queue || !(strstr(dispatch_queue_get_label(queue), "root") || strstr(dispatch_queue_get_label(queue), "main-thread"))) {
-		NSLog(@"***** error getting a dispatch queue*****");
-		return NO;
-	}
-
+	
 	dispatch_async(queue, ^{
 		[self.asset loadValuesAsynchronouslyForKeys:[NSArray arrayWithObject:kTracksKey] completionHandler:^{
 			NSError * error = nil;
@@ -224,7 +223,7 @@ static const NSString * ItemStatusContext;
 			videoWidth = [track naturalSize].width;
 			videoHeight = [track naturalSize].height;
 			
-			//NSLog(@"video loaded at %i x %i", videoWidth, videoHeight);
+			NSLog(@"video loaded at %i x %i", videoWidth, videoHeight);
 			
 			[self setVideoSize:CGSizeMake(videoWidth, videoHeight)];
 			
@@ -272,6 +271,13 @@ static const NSString * ItemStatusContext;
 	audioSampleTime = timeRange.start;
 	
 	NSError *error = nil;
+	
+	// safety
+	if (self.assetReader != nil) {
+		[self.assetReader cancelReading];
+		self.assetReader = nil;
+	}
+	
 	self.assetReader = [AVAssetReader assetReaderWithAsset:self.asset error:&error];
 	
 	if(error) {
@@ -613,21 +619,22 @@ static const NSString * ItemStatusContext;
 		return;
 	}
 	
-	if(timeObserver){
+	if(timeObserver != nil){
 		return;
 	}
 	
 	double interval = 1.0 / (double)timeObserverFps;
 	
+	__block ofAVFoundationVideoPlayer* refToSelf = self;
 	timeObserver = [[_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(interval, NSEC_PER_SEC)
 														  queue:dispatch_get_main_queue() usingBlock:
 					 ^(CMTime time) {
-						 [self update];
+						 [refToSelf update];
 					 }] retain];
 }
 
 - (void)removeTimeObserverFromPlayer {
-	if(timeObserver) {
+	if(timeObserver != nil) {
 		[_player removeTimeObserver:timeObserver];
 		[timeObserver release];
 		timeObserver = nil;
@@ -688,6 +695,8 @@ static const NSString * ItemStatusContext;
 		bFinished = NO;
 	}
 	
+	// expensive call?
+	// destroy it on a thread?
 	[self.assetReader cancelReading];
 	self.assetReader = nil;
 	self.assetReaderVideoTrackOutput = nil;

@@ -17,11 +17,6 @@ ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
     players[0].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
     players[1].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
 #endif
-#ifdef _THREADED_PLAYER
-    players[0].video.start();
-    players[1].video.start();
-#endif
-    
     state           = empty;
 }
 
@@ -291,12 +286,13 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
         os << "Loaded  : " << players[pendingMovie].video.isLoaded() << endl;
         
         os << "State   : " << state_string[state] << endl << "------------------" << endl;
-#ifdef _THREADED_PLAYER
-        os << "Threaded Player" << endl;
+#ifdef GSTREAMER_ON_OSX
+        os << "GStreamer on OSX" << endl;
 #else
-        os << "GStreamer Player" << endl;
+        os << "ofVideoPlayer" << endl;
 #endif
-        
+
+
         ofDrawBitmapString(os.str(), w-w/4+2, 17 + h/4);
 
         ofDisableAntiAliasing();

@@ -28,7 +28,7 @@
 
 //---------------------------------------------------------- video player.
 @interface ofAVFoundationVideoPlayer : NSObject {
-
+	
     id<OFAVFoundationVideoPlayerDelegate> delegate;
     
     ofAVFoundationVideoPlayerView * _playerView;
@@ -70,7 +70,6 @@
     BOOL bSeeking;
     BOOL bSampleVideo;
     BOOL bSampleAudio;
-    NSAutoreleasePool *pool;
 }
 
 @property (nonatomic, assign) id delegate;
