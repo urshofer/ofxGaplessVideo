@@ -21,7 +21,7 @@ private:
     PStatus state;
     const string state_string[7] = {"empty", "ready", "appended", "waiting", "switching", "switched", "forceappended"};
 
-    bool hasPreview;
+    bool hasPreview, receivedVolumeChange;
     
     /* Command Queue */
     struct command {
@@ -45,6 +45,7 @@ private:
         fade          fades;
         int           loadTime;
         int           actionTimeout;
+        float         maxVol;
     };
     player players[MAX_VIDEOS];
 
@@ -67,12 +68,17 @@ public:
     int getCurrentFrame() {return players[currentMovie].video.isLoaded() ? players[currentMovie].video.getCurrentFrame() : 0;}
     int getTotalNumFrames() {return players[currentMovie].video.isLoaded() ? players[currentMovie].video.getTotalNumFrames() : 0;}
     
+    float getWidth() {return players[currentMovie].video.isLoaded() ? players[currentMovie].video.getWidth() : 0;}
+    float getHeight() {return players[currentMovie].video.isLoaded() ? players[currentMovie].video.getHeight() : 0;}
+    
     void setPreview(bool p);
     void togglePreview();
     
     void loadMovie(string _name, bool _in, bool _out);
     void appendMovie(string _name, bool _in, bool _out);
     void triggerMovie(string _name);
+    
+    void setVolume(float _volume);
 
     void update();
     bool draw(int x, int y, int w, int h);

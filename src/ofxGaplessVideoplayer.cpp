@@ -9,10 +9,13 @@
 // Constructor
 ofxGaplessVideoPlayer::ofxGaplessVideoPlayer() {
     hasPreview      = false;
+    receivedVolumeChange = false;
     currentMovie    = 0;
     pendingMovie    = 1;
 	players[0].actionTimeout   = 0;
 	players[1].actionTimeout   = 0;
+	players[0].maxVol = 1.0f;
+	players[1].maxVol = 1.0f;
 #ifdef GSTREAMER_ON_OSX
     players[0].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
     players[1].video.setPlayer(std::shared_ptr<ofGstVideoPlayer>(new ofGstVideoPlayer));
@@ -33,6 +36,12 @@ void ofxGaplessVideoPlayer::setPreview(bool p){
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::togglePreview(){
     hasPreview = !hasPreview;
+}
+
+void ofxGaplessVideoPlayer::setVolume(float _volume) {
+    players[currentMovie].maxVol = _volume;
+    players[pendingMovie].maxVol = _volume;
+    receivedVolumeChange = true;
 }
 
 
@@ -107,39 +116,29 @@ void ofxGaplessVideoPlayer::_loadMovie(string _name, bool _in, bool _out){
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::_appendMovie(string _name, bool _in, bool _out){
     if (state != ready) return;
-
-    ofLogVerbose() << "        " << _name << " appended";
-    players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis();
-//    players[pendingMovie].video.close();
-    players[pendingMovie].actionTimeout = ofGetElapsedTimeMillis() - players[pendingMovie].actionTimeout;
-
     players[pendingMovie].loadTime = ofGetElapsedTimeMillis();
     players[pendingMovie].video.loadAsync(_name);
     players[pendingMovie].loadTime = ofGetElapsedTimeMillis() - players[pendingMovie].loadTime;
-
     players[pendingMovie].fades.in  = _in;
     players[pendingMovie].fades.out = _out;
- 
     state = appended;
-    
     ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " appended";
 }
 
 //--------------------------------------------------------------
 void ofxGaplessVideoPlayer::_triggerMovie(string _name){
     if(state == waiting) {
-        ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " triggered";
+        players[pendingMovie].video.setVolume(0.0f);
         players[pendingMovie].video.setPaused(false);
         state = switching;
+        ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " triggered";
     }
     else {
-        ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " Force triggered";
-//        players[pendingMovie].video.close();
         players[pendingMovie].video.loadAsync(_name);
         players[pendingMovie].fades.in  = false;
         players[pendingMovie].fades.out = false;
-//        players[pendingMovie].video.play();
         state = forceappended;
+        ofLogError(ofToString(ofGetElapsedTimef(),2)) << "[" << pendingMovie << "] " << _name << " Force triggered";
     }
     
 }
@@ -179,6 +178,7 @@ void ofxGaplessVideoPlayer::update(){
     
     if (state == forceappended) {
         if(players[pendingMovie].video.isLoaded()) {
+            players[pendingMovie].video.setVolume(0.0f);
             players[pendingMovie].video.setPaused(false);
             state = switching;
         }
@@ -194,7 +194,7 @@ void ofxGaplessVideoPlayer::update(){
         }
     }
 
-    /* After Switch: Pause other clip, mute */
+    /* After Switch: Pause other clip & mute */
     
     if (state == switched) {
         players[pendingMovie].video.setVolume(0.0f);
@@ -209,10 +209,8 @@ void ofxGaplessVideoPlayer::update(){
             pendingMovie = currentMovie;
             currentMovie = pendingMovie==1?0:1;
             state = switched;
-            if (!players[currentMovie].fades.in) {
-                players[currentMovie].video.setVolume(1.0f);
-                ofLogVerbose() << "Set Audio to 1";
-            }
+            players[currentMovie].video.setVolume(!players[currentMovie].fades.in ? players[currentMovie].maxVol : 0);
+            ofLogVerbose() << "Set Audio to " << players[currentMovie].maxVol;
         }
     }
 
@@ -236,32 +234,42 @@ bool ofxGaplessVideoPlayer::draw(int x, int y, int w, int h){
 
     if (!players[currentMovie].video.isPaused() && !players[currentMovie].video.getIsMovieDone()) {
         ofPushStyle();
+        float fade = 1.0f;
+        static float old_fade = 0.0f;
         if (players[currentMovie].fades.out || players[currentMovie].fades.in) {
-            float fade = 1.0f;
-            static float old_fade = 0.0f;
-            if (players[currentMovie].fades.in && current_pos<25) {
-                fade = 1.0f / 25.0f * CLAMP(current_pos-1, 0, 25);
+            int length = total_pos>50 ? 25 : (total_pos > 2 ? floor(total_pos/2) : 1);
+            if (players[currentMovie].fades.in && current_pos<length) {
+                fade = 1.0f / (float)length * CLAMP(current_pos-1, 0, length);
                 ofLogVerbose() << "Fade in " << fade;
             }
-            if (players[currentMovie].fades.out && (total_pos-current_pos)<25) {
-                fade = 1.0f / 25.0f * CLAMP(total_pos-current_pos, 0, 25);
+            if (players[currentMovie].fades.out && (total_pos-current_pos)<length) {
+                fade = 1.0f / (float)length * CLAMP(total_pos-current_pos, 0, length);
                 ofLogVerbose() << "Fade out " << fade;
             }
             ofEnableBlendMode(OF_BLENDMODE_ALPHA);
             ofSetColor(255 * fade, 255 * fade, 255 * fade, 255 * fade);
             if (fade != old_fade) {
-                players[currentMovie].video.setVolume(fade);
+                players[currentMovie].video.setVolume(CLAMP(players[currentMovie].maxVol * fade, 0.0f, 1.0f));
                 ofLogVerbose() << "Fade Audio: " << fade;
             }
-            old_fade = fade;
         }
         else {
             ofSetColor(255,255,255,255);
         }
+
         players[currentMovie].video.draw(x, y, w, h);
       	ofDisableBlendMode();
         ofPopStyle();
         isDrawing = true;
+        
+        if (receivedVolumeChange && fade == old_fade) {
+            players[currentMovie].video.setVolume(CLAMP(players[currentMovie].maxVol, 0.0f, 1.0f));
+            receivedVolumeChange = false;
+        }
+        
+        old_fade = fade;
+        
+        
     }
     
     if (hasPreview) {
