@@ -32,31 +32,25 @@ It's probably the most efficient way to pass the MO Object as a reference to a l
 
 Loads a Movie and starts playback immediately:
 
-    MO->loadMovie(string movieFile, bool fade_in, bool fade_out);
+    MO.loadMovie(string movieFile, bool fade_in, bool fade_out);
 
 Preloads a Movie:
 
-    MO->appendMovie(string movieFile, bool fade_in, bool fade_out);
+    MO.appendMovie(string movieFile, bool fade_in, bool fade_out);
 
 Starts a preloaded Movie. The parameter movieFile should be set to the same value as in appendMovie:
 
-    MO->triggerMovie(string movieFile);
+    MO.triggerMovie(string movieFile);
 
-Communication
+Network Usage
 -------------
 
-Either send loadMovie signals over the net if you want to start a clip by a single command. To create a more accurate system, send a preload signal first and a trigger signal in the moment you really want to start the movie.
+ofxGaplessVideo was made to create a network controlled video player. A server signals a append command and then a trigger command. It is used in the www.automatic-cinema.com project.
 
+GStreamer
+---------
 
-Compilation & Patches
----------------------
-
-ofxGaplessVideo runs the AVFoundationPlayer in a background thread on OSX. On Linux, GStreamer is used in the main thread. Since the AVFoundationPlayer is not meant to run in the background, a patched version is needed. Replace the files in the openFrameworks/libs/openframeworks/video directory with the ones provided in the patches directory of the ofxGaplessVideo repository. Linux should run out of the box.
-
-GStreamer on OSX
-----------------
-
-It's also possible to compile ofxGaplessVideo with GStreamer support on OSX. Uncomment
+It's also possible to compile ofxGaplessVideo with GStreamer support on OSX.
 
 
 
